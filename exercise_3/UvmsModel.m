@@ -77,7 +77,7 @@ classdef UvmsModel < handle
 
             % Initial arm configuration and vehicle pose used by the exercise.
             obj.q      = [-0.0031 0 0.0128 -1.2460 0.0137 0.0853 -pi/2]';
-            obj.eta    = [12.2025 37.3748 -30 0 0 pi/2]';
+            obj.eta    = [12.2025 37.3748 -39 0 0 pi/2]';
 
             % Initialize velocity and sensor state before they are read by the ActionManager, logger or asynchronous Unity interface.
             obj.q_dot    = zeros(size(obj.q));

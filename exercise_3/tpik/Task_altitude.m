@@ -1,20 +1,29 @@
 classdef Task_altitude < Task
 
     properties
-        feedbackGain = 20        % Proportional gain that converts Cartesian error into a velocity reference [1/s].
+        feedbackGain = 0.5        % Proportional gain that converts Cartesian error into a velocity reference [1/s].
         maxAngularVelocity = 20  % Maximum absolute component of the angular velocity reference [rad/s].
-        maxLinearVelocity = 20   % Maximum absolute component of the linear velocity reference [m/s].
+        maxLinearVelocity = 0.2   % Maximum absolute component of the linear velocity reference [m/s].
 
         min_alt = 2
         al_delta = 0.5
+        
+        counter = 0
     end
 
     methods
         function updateReference(obj, robot)
-            
-            if isnan(robot.altitude) || robot.altitude < 0
+
+            if isnan(robot.altitude) || robot.altitude < 0 
                 obj.xdotbar = 0;
                 return
+            end
+
+            
+            obj.counter = obj.counter + 1;
+
+            if obj.counter == 1 && robot.altitude > 70
+                robot.altitude = 0;
             end
 
 

@@ -53,7 +53,7 @@ task_set = move_tasks;
 % Positions are in metres and orientations are [roll pitch yaw] in radians. Both poses are expressed in the inertial/world frame.
 w_arm_goal_position = [12.2025, 37.3748, -39.8860]';
 w_arm_goal_orientation = [0, pi, pi/2];
-w_vehicle_goal_position = [12.2025 40 -30]';
+w_vehicle_goal_position = [12.2025 40 -40]';
 w_vehicle_goal_orientation = [0, 0, 0];
 
 

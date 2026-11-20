@@ -26,13 +26,13 @@ sim = UvmsSim(dt, robotModel, endTime);
 
 % Initial position
 robotModel.eta = [48.5 11.5 -33 -pi/3 0 pi/2]';%[10.5 35.5 -36 -pi/3 pi/3 pi/2]';[48.5 11.5 -33] 
+robotModel.updateTransformations();
 
 % Unity is used only as viewer/sensor endpoint; it is not the simulator.
 unity = UnityInterface("127.0.0.1");
 
 %% Define one action as a strict-priority stack of tasks
 % The first cell is the highest-priority task. Add safety tasks before the action objective when extending this exercise (for example, joint limits).
-task_tool = TaskTool();
 task_position = TaskPosition();
 task_h_attitude = TaskHorizontalAttitude();
 task_min_altitude = TaskAltitude();

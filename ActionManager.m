@@ -106,7 +106,6 @@ classdef ActionManager < handle
                     tasks{i}.updateReference(robot);
                     tasks{i}.updateJacobian(robot);
                     tasks{i}.updateActivation(robot);
-                    tasks{i}.A = tasks{i}.A * obj.ActivationFunction(i);
                 end
             else
                 tasks = obj.actions{obj.currentActionName};
@@ -126,7 +125,11 @@ classdef ActionManager < handle
             satMaxRemaining = obj.satMax;
             K = eye(obj.dof); % Neutral control-space weighting required by the current iCAT interface.
             for i = 1:length(tasks)
-                [Qp, ydotbar, ~, ~, ~, satMinRemaining, satMaxRemaining] = iCAT_task(tasks{i}.A, tasks{i}.J, Qp, ydotbar, tasks{i}.xdotbar, tasks{i}.lambda, tasks{i}.threshold, tasks{i}.gain, satMinRemaining, satMaxRemaining, obj.satMin, obj.satMax, K);
+                Aeffective = tasks{i}.A;
+                if obj.changingAction
+                    Aeffective = obj.ActivationFunction(i) * Aeffective;
+                end
+                [Qp, ydotbar, ~, ~, ~, satMinRemaining, satMaxRemaining] = iCAT_task(Aeffective, tasks{i}.J, Qp, ydotbar, tasks{i}.xdotbar, tasks{i}.lambda, tasks{i}.threshold, tasks{i}.gain, satMinRemaining, satMaxRemaining, obj.satMin, obj.satMax, K);
             end
 
             % Use any residual degrees of freedom to drive the system velocity toward zero. As the last-priority task, this cannot alter motion already assigned to higher-priority objectives and must respect the velocity range left by the preceding tasks.

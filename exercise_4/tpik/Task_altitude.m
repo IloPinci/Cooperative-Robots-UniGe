@@ -7,23 +7,15 @@ classdef Task_altitude < Task
 
         min_alt = 2
         al_delta = 0.5
-        
-        counter = 0
+
     end
 
     methods
         function updateReference(obj, robot)
 
-            if isnan(robot.altitude) || robot.altitude < 0 
+            if isnan(robot.altitude) 
                 obj.xdotbar = 0;
                 return
-            end
-
-            
-            obj.counter = obj.counter + 1;
-
-            if obj.counter == 1 && robot.altitude > 70
-                robot.altitude = 0;
             end
 
 

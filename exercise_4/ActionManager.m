@@ -17,6 +17,18 @@ classdef ActionManager < handle
         dof              % Total dimension of ydot = [q_dot; v_nu].
         satMin           % [dof x 1] original lower system-velocity limits.
         satMax           % [dof x 1] original upper system-velocity limits.
+
+        previousActionName (1,1)string = ""
+        switchTime = 0
+
+        unifiedTaskList = {}
+        isInPrevious = false(1,0)
+        isInCurrent = false(1,0)
+
+    end
+
+    properties
+        transitionDuration = 3; % duration of ramp
     end
 
     properties (Constant, Access = private)
@@ -49,6 +61,7 @@ classdef ActionManager < handle
             obj.satMin = -obj.satMax;
         end
 
+
         function addAction(obj, actionName, taskStack)
             %ADDACTION Register a prioritized task stack under a unique name.
             %
@@ -77,7 +90,48 @@ classdef ActionManager < handle
             obj.actions(actionName) = {taskStack};
         end
 
-        function [v_nu, q_dot] = computeICAT(obj, robot)
+        
+        % we have to store the unifing list and we call it after every new
+        % action that has been added. 
+        function buildUnifyingTaskList(obj, taskList)
+            
+            % does the list have actual tasks
+            if ~iscell(taskList) || isempty(taskList) || ~all(cellfun(@(task) isa(task, 'Task'), taskList))
+                error('ActionManager:InvalidTaskList', 'The unifying list must be a non-empty cell array of Task objects.');
+            end
+            
+            % are the ids consistent (not repeated and not empty)
+            unifiedIds = ActionManager.taskIds(taskList);
+            if any(strlength(unifiedIds) == 0) || numel(unique(unifiedIds)) ~= numel(unifiedIds)
+                error('ActionManager:InvalidTaskIds', 'Every task in the unifying list needs a unique, non-empty id.');
+            end
+            
+
+            actionNames = keys(obj.actions);
+            for k = 1:numel(actionNames)
+                stack = obj.actions{actionNames(k)};
+                [found, positions] = ismember(ActionManager.taskIds(stack), unifiedIds);
+
+                % are all the tasks in the unifing list
+                if ~all(found)
+                    error('ActionManager:MissingTasks', 'Action "%s" contains tasks that are not in the unifying list.', actionNames(k));
+                end
+
+                % are the priorities carrried properly
+                if any(diff(positions) <= 0)
+                    error('ActionManager:PriorityMismatch', 'The order of the unifying list contradicts the priorities of action "%s".', actionNames(k));
+                end
+            end
+
+            obj.unifiedTaskList = taskList;
+            
+            if obj.currentActionName ~= ""
+                obj.updateMembership();
+            end
+        end
+
+
+        function [v_nu, q_dot] = computeICAT(obj, robot, currentTime)
             %COMPUTEICAT Compute arm and vehicle velocity references.
             %
             % Input:
@@ -93,14 +147,27 @@ classdef ActionManager < handle
                 error('ActionManager:NoActiveAction', 'Select an action before calling computeICAT.');
             end
 
-            % Select the prioritized list associated with the active action.
-            tasks = obj.actions{obj.currentActionName};
+            if isempty(obj.unifiedTaskList)
+                error('ActionManager:NoUnifyingList', 'Call setUnifyingTaskList before computeICAT.');
+            end
+
+            % we go through our unified list
+            tasks =  obj.unifiedTaskList;
+            
 
             % Refresh all configuration-dependent task quantities before the stack is inverted. A task may use robot state in all three calls.
             for i = 1:length(tasks)
                 tasks{i}.updateReference(robot);
                 tasks{i}.updateJacobian(robot);
                 tasks{i}.updateActivation(robot);
+
+                a_p = IncreasingBellShapedFunction(obj.switchTime, ...
+                                                   obj.switchTime + obj.transitionDuration, ...
+                                                   double(obj.isInPrevious(i)), ...
+                                                   double(obj.isInCurrent(i)), ...
+                                                   currentTime);
+                
+                tasks{i}.A = tasks{i}.A * a_p; 
             end
 
             % Start with zero commanded velocity, the full system motion space and the original velocity bounds. Each priority consumes part of the available velocity range.
@@ -121,7 +188,8 @@ classdef ActionManager < handle
             v_nu = ydotbar(obj.dofArm+1:obj.dof);
         end
 
-        function setCurrentAction(obj, actionName)
+
+        function setCurrentAction(obj, actionName, time)
             %SETCURRENTACTION Select an action by name.
             %
             % Input:
@@ -140,7 +208,54 @@ classdef ActionManager < handle
                 error('ActionManager:UnknownAction', 'No action named "%s" has been registered.', actionName);
             end
 
+            if isempty(obj.unifiedTaskList)
+                error('ActionManager:NoUnifyingList', 'Call buildUnifyingTaskList before selecting an action.');
+            end
+
+            if actionName == obj.currentActionName
+                warning("Don't declare the same action twice!");
+                return;
+            end
+
+
+            if obj.currentActionName == ""
+                % first execution
+                obj.previousActionName = actionName;
+            else
+                obj.previousActionName = obj.currentActionName;
+            end
+
             obj.currentActionName = actionName;
+            obj.switchTime = time;
+
+            % since a new action is set we have to update the membership
+            obj.updateMembership();
         end
     end
+
+    % we see if the tasks in the unified list belong in the previous task
+    % list and if the belong in the current one. gives us an array with 0
+    % or 1 which we then use to determine the min and max of the bell
+    % function
+    methods (Access = private)
+        function updateMembership(obj)
+            unifiedIds = ActionManager.taskIds(obj.unifiedTaskList);
+
+            obj.isInPrevious = ismember(unifiedIds, ActionManager.taskIds(obj.actions{obj.previousActionName}));
+            obj.isInCurrent = ismember(unifiedIds, ActionManager.taskIds(obj.actions{obj.currentActionName}));
+        end
+    end
+
+    % for every new action i collect the ids in an array so i can compare
+    % with the is member function above
+    methods (Static, Access = private)
+        function ids = taskIds(taskList)
+            ids = strings(1, numel(taskList));
+
+            for i = 1 : numel(taskList)
+                ids(i) = taskList{i}.id;
+            end
+        end
+    end
+
 end

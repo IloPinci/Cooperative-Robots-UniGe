@@ -14,6 +14,7 @@ classdef Task < handle
     %   - gain weights the penalty on control directions already constrained by higher-priority tasks. A larger value reinforces priority preservation, but may also make the inverse more conservative.
 
     properties
+        id (1,1)string = ""
         xdotbar = [] % [m x 1] desired task-space velocity/reference rate.
         J = []       % [m x n] task Jacobian for ydot = [q_dot; v_nu].
         A = []       % [m x m] diagonal task activation matrix, entries in [0,1].

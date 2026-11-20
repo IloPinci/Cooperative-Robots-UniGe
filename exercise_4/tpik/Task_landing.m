@@ -4,7 +4,7 @@ classdef Task_landing < Task
         feedbackGain = 0.5        % Proportional gain that converts Cartesian error into a velocity reference [1/s].
         maxLinearVelocity = 2   % Maximum absolute component of the linear velocity reference [m/s].
         
-        min_altitude = 0.2  % to avoid hitting the floor
+        min_altitude = 0.05  % to avoid hitting the floor we put 2 cm
     end
 
 
@@ -12,7 +12,7 @@ classdef Task_landing < Task
         function updateReference(obj, robot)
             
             % safeguards
-            if isnan(robot.altitude) || robot.altitude < 0 
+            if isnan(robot.altitude)
                 obj.xdotbar = 0;
                 return
             end
@@ -61,7 +61,6 @@ classdef Task_landing < Task
            end
 
             obj.A = eye(1);
-
         end
     end
 end

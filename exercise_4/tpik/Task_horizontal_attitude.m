@@ -64,9 +64,7 @@ classdef Task_horizontal_attitude < Task
                 obj.theta_max, ...
                 0, ...
                 1, ...
-                obj.current_theta);
-
-            
+                obj.current_theta); 
         end
     end
 end

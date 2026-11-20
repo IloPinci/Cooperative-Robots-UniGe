@@ -31,33 +31,55 @@ unity = UnityInterface("127.0.0.1");
 %% Define one action as a strict-priority stack of tasks
 
 % constrain tasks
-t_altitute = Task_altitude;
+t_altitude = Task_altitude;
 t_alignment = Task_horizontal_attitude;
 
-t_position_vehicle = Task_position_vehicle();
+t_position_vehicle = Task_position_vehicle;
 t_orientation_vehicle = Task_orientation_vehicle;
 
 t_landing = Task_landing;
 
+t_altitude.id = "altitude";
+t_alignment.id = "alignment";
+t_position_vehicle.id = "position";
+t_orientation_vehicle.id = "orientation";
+t_landing.id = "landing";
 
-safe_navigation = {t_altitute, t_alignment, t_position_vehicle, t_orientation_vehicle};
+
+safe_navigation = {t_altitude, t_alignment, t_position_vehicle, t_orientation_vehicle};
 landing = {t_alignment, t_landing, t_position_vehicle};
+
+unified_list = {t_altitude, t_alignment, t_landing, t_position_vehicle, t_orientation_vehicle};
+
+%% Dont need to have this here now
+% %to compare the ids 
+% unified_ids  = cellfun(@(x) x.id, unified_list);
+% safe_nav_ids = cellfun(@(x) x.id, safe_navigation);
+% landing_ids  = cellfun(@(x) x.id, landing);
+% 
+% in_safe_nav = ismember(unified_ids, safe_nav_ids);
+% in_landing  = ismember(unified_ids, landing_ids);
+%%
 
 % Actions are registered and selected by name; the task order still defines strict priority within each action.
 actionManager = ActionManager(robotModel);
+
 actionManager.addAction("safe", safe_navigation);
-actionManager.setCurrentAction("safe");
+actionManager.addAction("landing", landing);
+
+actionManager.buildUnifyingTaskList(unified_list)
+
+actionManager.setCurrentAction("safe", sim.time);
 
 % The logger monitors the tasks belonging to the action selected above.
-task_set = safe_navigation;
+task_set = unified_list;
 
 %% Set desired poses
 % Positions are in metres and orientations are [roll pitch yaw] in radians. Both poses are expressed in the inertial/world frame.
 w_arm_goal_position = [0, 0, 0]';
 w_arm_goal_orientation = [0, 0, 0];
 w_vehicle_goal_position = [50, -12.5, -33]';
-w_vehicle_goal_orientation = [pi, 0, 0];
-
+w_vehicle_goal_orientation = [0, 0, 0];
 
 
 % Store the goals as homogeneous transforms in the shared model.
@@ -66,6 +88,7 @@ robotModel.setGoal(w_arm_goal_position, w_arm_goal_orientation, w_vehicle_goal_p
 % Preallocate one column for the initial state plus all integration steps.
 logger = SimulationLogger(ceil(endTime/dt)+1, robotModel, task_set);
 
+flag = 0;
 
 %% Run the closed-loop kinematic simulation
 tic
@@ -74,7 +97,7 @@ for step = 1:sim.maxSteps
     robotModel.altitude = unity.receiveAltitude(robotModel);
 
     % Update every task and solve the current strict-priority hierarchy.
-    [v_nu, q_dot] = actionManager.computeICAT(robotModel);
+    [v_nu, q_dot] = actionManager.computeICAT(robotModel, sim.time);
 
     % Integrate arm and vehicle velocities, then refresh all transforms.
     sim.step(v_nu, q_dot);
@@ -96,7 +119,17 @@ for step = 1:sim.maxSteps
         fprintf('Distance: %.2f m\n', lin_error);
         fprintf('Orientation: %.2f rad\n', ang_error);
         fprintf('theta = %.3f\n\n\n', t_alignment.current_theta);
+        disp(t_position_vehicle.A);
     end
+
+
+    if norm(robotModel.wTgv(1:2, 4) - robotModel.wTv(1:2, 4)) <= 0.10 && flag == 0
+        fprintf("Initiating Landing procedure \n");
+        actionManager.setCurrentAction("landing", sim.time);
+
+        flag = 1;
+    end
+
 
     % Busy-wait until one sample period has elapsed when real-time playback is desired. 
     % Remove this call to execute the simulation as fast as possible.

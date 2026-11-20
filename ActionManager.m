@@ -165,38 +165,31 @@ classdef ActionManager < handle
 
         function compileSmoothChange(obj)
             unified = obj.actions{"unified_list"};
-            unified_names = cellfun(@(x) string(class(x)), unified);
-            
+        
             action_keys = obj.actions.keys;
             action_keys = action_keys(action_keys ~= "unified_list");
-            
+        
             for i = 1:length(action_keys)
                 k = action_keys(i);
                 action_list = obj.actions{k};
-                
-                % All zeros
-                mask = zeros(size(unified));
         
-                if ~isempty(action_list)
-                    action_names = cellfun(@(x) string(class(x)), action_list); % Extract the name of the task
-                    
-                    j = 1; % Pointer to the task that must be found inside the unified list
-                    for idx = 1:length(unified_names) % Pointer of the unified list
-                        if j <= length(action_names) && unified_names(idx) == action_names(j)
-                            mask(idx) = 1;
-                            j = j + 1;
-                        end
-                    end
-                    
-                    % Check if all tasks were found
-                    if j <= length(action_names)
-                        error('The action "%s" is not inside the unified list.', k);
+                mask = zeros(size(unified));
+                j = 1;
+        
+                for idx = 1:length(unified)
+                    if j <= length(action_list) && unified{idx} == action_list{j}
+                        mask(idx) = 1;
+                        j = j + 1;
                     end
                 end
-                
+        
+                if j <= length(action_list)
+                    error('The action "%s" is not inside the unified list.', k);
+                end
+        
                 obj.ActivationTable{k} = mask;
             end
-            
+        
             disp(obj.ActivationTable);
         end
 

@@ -37,11 +37,12 @@ task_position = TaskPosition();
 task_h_attitude = TaskHorizontalAttitude();
 task_min_altitude = TaskAltitude();
 task_landing = TaskLanding();
+task_vehicle_att = TaskVehicleAttitude();
 
-move_vehicle_tasks = {task_min_altitude task_h_attitude task_position};
+move_vehicle_tasks = {task_min_altitude task_h_attitude task_position task_vehicle_att};
 landing_vehicle_task = {task_landing task_h_attitude task_position};
 
-unified_task_vector = {task_landing task_min_altitude task_h_attitude task_position};
+unified_task_vector = {task_landing task_min_altitude task_h_attitude task_position task_vehicle_att};
 
 % Actions are registered and selected by name; the task order still defines strict priority within each action.
 actionManager = ActionManager(robotModel);

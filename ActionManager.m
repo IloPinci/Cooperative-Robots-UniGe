@@ -17,6 +17,10 @@ classdef ActionManager < handle
         dof              % Total dimension of ydot = [q_dot; v_nu].
         satMin           % [dof x 1] original lower system-velocity limits.
         satMax           % [dof x 1] original upper system-velocity limits.
+        ActivationTable dictionary = dictionary(string.empty, cell.empty)
+        ActivationFunction
+        changingAction = false
+        deltaTime = 2    % time to pass from one action to another
     end
 
     properties (Constant, Access = private)
@@ -94,23 +98,38 @@ classdef ActionManager < handle
             end
 
             % Select the prioritized list associated with the active action.
-            tasks = obj.actions{obj.currentActionName};
-
-            % Refresh all configuration-dependent task quantities before the stack is inverted. A task may use robot state in all three calls.
-            for i = 1:length(tasks)
-                tasks{i}.updateReference(robot);
-                tasks{i}.updateJacobian(robot);
-                tasks{i}.updateActivation(robot);
+            if (obj.changingAction)         % In case the action is changing
+                tasks = obj.actions{'unified_list'};
+    
+                % Refresh all configuration-dependent task quantities before the stack is inverted. A task may use robot state in all three calls.
+                for i = 1:length(tasks)
+                    tasks{i}.updateReference(robot);
+                    tasks{i}.updateJacobian(robot);
+                    tasks{i}.updateActivation(robot);
+                end
+            else
+                tasks = obj.actions{obj.currentActionName};
+    
+                % Refresh all configuration-dependent task quantities before the stack is inverted. A task may use robot state in all three calls.
+                for i = 1:length(tasks)
+                    tasks{i}.updateReference(robot);
+                    tasks{i}.updateJacobian(robot);
+                    tasks{i}.updateActivation(robot);
+                end
             end
 
             % Start with zero commanded velocity, the full system motion space and the original velocity bounds. Each priority consumes part of the available velocity range.
             ydotbar = zeros(obj.dof,1);
             Qp = eye(obj.dof);
-            satMinRemaining = obj.satMin;
+            satMinRemaining = obj.satMin;            
             satMaxRemaining = obj.satMax;
             K = eye(obj.dof); % Neutral control-space weighting required by the current iCAT interface.
             for i = 1:length(tasks)
-                [Qp, ydotbar, ~, ~, ~, satMinRemaining, satMaxRemaining] = iCAT_task(tasks{i}.A, tasks{i}.J, Qp, ydotbar, tasks{i}.xdotbar, tasks{i}.lambda, tasks{i}.threshold, tasks{i}.gain, satMinRemaining, satMaxRemaining, obj.satMin, obj.satMax, K);
+                Aeffective = tasks{i}.A;
+                if obj.changingAction
+                    Aeffective = obj.ActivationFunction(i) * Aeffective;
+                end
+                [Qp, ydotbar, ~, ~, ~, satMinRemaining, satMaxRemaining] = iCAT_task(Aeffective, tasks{i}.J, Qp, ydotbar, tasks{i}.xdotbar, tasks{i}.lambda, tasks{i}.threshold, tasks{i}.gain, satMinRemaining, satMaxRemaining, obj.satMin, obj.satMax, K);
             end
 
             % Use any residual degrees of freedom to drive the system velocity toward zero. As the last-priority task, this cannot alter motion already assigned to higher-priority objectives and must respect the velocity range left by the preceding tasks.
@@ -141,6 +160,79 @@ classdef ActionManager < handle
             end
 
             obj.currentActionName = actionName;
+        end
+
+
+        function compileSmoothChange(obj)
+            unified = obj.actions{"unified_list"};
+        
+            action_keys = obj.actions.keys;
+            action_keys = action_keys(action_keys ~= "unified_list");
+        
+            for i = 1:length(action_keys)
+                k = action_keys(i);
+                action_list = obj.actions{k};
+        
+                mask = zeros(size(unified));
+                j = 1;
+        
+                for idx = 1:length(unified)
+                    if j <= length(action_list) && unified{idx} == action_list{j}
+                        mask(idx) = 1;
+                        j = j + 1;
+                    end
+                end
+        
+                if j <= length(action_list)
+                    error('The action "%s" is not inside the unified list.', k);
+                end
+        
+                obj.ActivationTable{k} = mask;
+            end
+        
+            disp(obj.ActivationTable);
+        end
+
+
+        function [Done] = SmoothActivation(obj, time, previous, new)
+            % Create the vector that rapresent the changing from one input to the other
+            % Input:
+            %     time: time passed
+            %     previous: name of the prevoius task
+            %     new: name of the new task
+            %
+            % Output:
+            %     Done: boolean value that indicates that the changing phase ended
+            %
+
+            if (time >= obj.deltaTime)      % in case the changing phase ended
+                obj.setCurrentAction(new);
+                obj.changingAction = false;
+                Done = true;
+                return
+            end
+
+            if(obj.changingAction == false)
+                obj.changingAction = true;
+            end
+
+            vec = obj.ActivationTable{previous} - 2 * obj.ActivationTable{new};
+
+            for i = 1:length(vec)   % For each task in the unified list
+                switch vec(i)
+                    case 0          % 00
+                        obj.ActivationFunction(i) = 0;
+                    case -2         % 01
+                        obj.ActivationFunction(i) = IncreasingBellShapedFunction(0, obj.deltaTime, 0, 1, time);
+                    case 1          % 10
+                        obj.ActivationFunction(i) = DecreasingBellShapedFunction(0, obj.deltaTime, 0, 1, time);
+                    case -1         % 11
+                        obj.ActivationFunction(i) = 1;
+                end
+            end
+
+            Done = false;
+
         end
     end
 end

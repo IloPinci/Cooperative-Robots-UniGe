@@ -65,6 +65,9 @@ robotUDP = UDPInterface(realRobot);
 logger = SimulationLogger(bimanualSystem, goToObjectTasks);
 
 %% Run the closed-loop kinematic simulation
+graspCaptured = false;
+positionTolerance = 0.001;  % Tool position tolerance [m].
+orientationTolerance = 0.01; % Tool orientation tolerance [rad].
 tic
 for step = 1:bimanualSystem.maxSteps
     % In real-robot mode, replace the simulated configuration with the latest measurements before computing the new reference.
@@ -80,6 +83,20 @@ for step = 1:bimanualSystem.maxSteps
 
     % Integrate both arms and refresh their transforms and Jacobians.
     bimanualSystem.step(q_dot);
+
+    % Capture both fixed grasp transforms once the actual tool poses have arrived.
+    if ~graspCaptured
+        [leftAngularError,leftLinearError] = CartesianError(leftArm.wTg,leftArm.wTt);
+        [rightAngularError,rightLinearError] = CartesianError(rightArm.wTg,rightArm.wTt);
+
+        if norm(leftLinearError) < positionTolerance && norm(rightLinearError) < positionTolerance ...
+                && norm(leftAngularError) < orientationTolerance && norm(rightAngularError) < orientationTolerance
+            leftArm.captureGrasp();
+            rightArm.captureGrasp();
+            graspCaptured = true;
+            fprintf('Grasp geometry captured at t = %.2f s\n',bimanualSystem.time);
+        end
+    end
 
     % Send either velocity commands to the physical robots or joint positions to PyBullet, then store the completed sample.
     robotUDP.send(bimanualSystem.time, bimanualSystem);

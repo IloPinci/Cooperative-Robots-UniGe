@@ -17,8 +17,9 @@ classdef PandaArm < handle
         wTe              % [4x4] end-effector pose with respect to the world frame.
         eTt              % [4x4] fixed tool pose with respect to the end effector.
         wTt              % [4x4] tool pose with respect to the world frame.
+        tTo = []         % [4x4] fixed tool-to-object transform; empty until the grasp is captured.
         wTg              % [4x4] desired tool pose with respect to the world frame.
-        wTo              % [4x4] current object pose with respect to the world frame.
+        wTo              % [4x4] object pose in world; inferred from this arm after grasp capture.
         wTog             % [4x4] desired object pose with respect to the world frame.
         wJt              % [6x7] tool Jacobian expressed in world coordinates, ordered as [angular; linear].
         positionError    % [3x1] latest tool-position error expressed in the world frame [m].
@@ -94,15 +95,27 @@ classdef PandaArm < handle
             obj.wTog = wTog;
         end
 
+        function captureGrasp(obj)
+            %CAPTUREGRASP Store the object pose relative to the current tool frame.
+            %
+            % Call once the tool has reached its grasp goal. The saved transform
+            % stays fixed -> later motion updates wTo through the tool pose.
+            obj.tTo = obj.wTt \ obj.wTo;
+        end
+
         function updateTransform(obj)
             %UPDATETRANSFORM Recompute the end-effector and tool poses from obj.q.
             %
             % Input/output:
-            %   None. Updates obj.bTe, obj.wTe and obj.wTt in place.
+            %   None. Updates obj.bTe, obj.wTe and obj.wTt, and obj.wTo after grasp capture.
             configuration = [obj.q' 0 0]; % panda.mat includes the two gripper joints after the seven arm joints.
             obj.bTe = getTransform(obj.robotModel, configuration, 'panda_link7');
             obj.wTe = obj.wTb*obj.bTe;
             obj.wTt = obj.wTe*obj.eTt;
+
+            if ~isempty(obj.tTo)
+                obj.wTo = obj.wTt*obj.tTo;
+            end
         end
 
         function updateJacobian(obj)

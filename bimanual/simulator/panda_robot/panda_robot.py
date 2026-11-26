@@ -33,7 +33,7 @@ class PandaRobot:
             self.robot_id = p.loadURDF(panda_model, useFixedBase=True, flags=p.URDF_USE_SELF_COLLISION)
         else:
             q_ori = get_quaternion_from_euler(0,0,math.pi)
-            self.robot_id = p.loadURDF(panda_model, useFixedBase=True, flags=p.URDF_USE_SELF_COLLISION, basePosition=[1.05, 0, 0], baseOrientation=q_ori)
+            self.robot_id = p.loadURDF(panda_model, useFixedBase=True, flags=p.URDF_USE_SELF_COLLISION, basePosition=[1.06, -0.01, 0], baseOrientation=q_ori)
         # Set maximum joint velocity. Maximum joint velocity taken from:
         # https://s3-eu-central-1.amazonaws.com/franka-de-uploads/uploads/Datasheet-EN.pdf
         p.changeDynamics(bodyUniqueId=self.robot_id, linkIndex=0, maxJointVelocity=150 * (math.pi / 180))

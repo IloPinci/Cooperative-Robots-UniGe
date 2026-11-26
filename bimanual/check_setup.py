@@ -33,7 +33,7 @@ def main():
             positions, velocities = arm.get_position_and_velocity()
             assert np.isfinite(positions).all() and np.isfinite(velocities).all()
         assert p.getNumBodies() == 3
-        assert np.allclose(right.get_base_position_and_orientation()[0], [1.05, 0, 0])
+        assert np.allclose(right.get_base_position_and_orientation()[0], [1.06, -0.01, 0])
         print("PASS: NumPy, PyBullet, plane, both Panda models, meshes and simulation steps.")
     finally:
         p.disconnect(client)

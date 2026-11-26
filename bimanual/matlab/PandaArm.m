@@ -56,8 +56,8 @@ classdef PandaArm < handle
             obj.jlmax = [2.8973; 1.7628; 2.8973; -0.0698; 2.8973; 3.7525; 2.8973];
             obj.q_dot_max = 2*ones(7,1);
 
-            % The exercise initially makes the tool coincide with panda_link7. Students can replace this identity with the fixed end-effector-to-tool transform required by their setup.
-            obj.eTt = eye(4);
+            % Fixed tool mounting relative to panda_link7, as specified in the assignment.
+            obj.eTt = [RPYToRotationMatrix(0,0,deg2rad(-44.9949)),[0;0;0.2104];0 0 0 1];
             obj.wTg = eye(4);
             obj.wTo = eye(4);
             obj.wTog = eye(4);

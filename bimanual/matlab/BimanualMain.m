@@ -16,7 +16,7 @@ realRobot = false;
 
 % Each PandaArm loads the common mechanical model from panda.mat. The two instances differ only through their fixed world-to-base transforms.
 wTbLeft = eye(4);
-wTbRight = eye(4); % TODO: replace with the actual right-arm base pose in the world frame.
+wTbRight = [RPYToRotationMatrix(0,0,pi),[1.06;-0.01;0];0 0 0 1];
 leftArm = PandaArm(wTbLeft);
 rightArm = PandaArm(wTbRight);
 bimanualSystem = BimanualSim(dt, leftArm, rightArm, endTime);

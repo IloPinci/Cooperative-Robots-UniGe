@@ -42,13 +42,16 @@ leftArm.setObjectGoal(wTog);
 rightArm.setObjectGoal(wTog);
 
 %% Define named actions as strict-priority task stacks
+leftAltitudeTask = TaskAltitude(leftArm, "left", "left altitude");
+rightAltitudeTask = TaskAltitude(rightArm, "right", "right altitude");
 minimumManipulability = 0.06;
 manipulabilityActivationThreshold = 0.07;
 leftManipulabilityTask = TaskManipulability(leftArm, "left", "left manipulability", minimumManipulability, manipulabilityActivationThreshold);
 rightManipulabilityTask = TaskManipulability(rightArm, "right", "right manipulability", minimumManipulability, manipulabilityActivationThreshold);
 leftToolTask = TaskTool(leftArm, "left", "left tool");
 rightToolTask = TaskTool(rightArm, "right", "right tool");
-goToObjectTasks = {leftManipulabilityTask, rightManipulabilityTask, leftToolTask, rightToolTask};
+goToObjectTasks = {leftAltitudeTask, rightAltitudeTask, ...
+    leftManipulabilityTask, rightManipulabilityTask, leftToolTask, rightToolTask};
 
 actionManager = ActionManager(bimanualSystem);
 actionManager.addAction("go to object", goToObjectTasks);

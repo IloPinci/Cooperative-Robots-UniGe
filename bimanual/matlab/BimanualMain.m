@@ -58,17 +58,18 @@ leftToolTask = TaskTool(leftArm, "left", "left tool");
 rightToolTask = TaskTool(rightArm, "right", "right tool");
 
 rigidGraspTask = TaskRigidGrasp(leftArm, rightArm, "rigid grasp");
+objectMotionTask = TaskObjectMotion(leftArm, "left", "object motion");
 
 goToObjectTasks = {leftJointLimitsTask, rightJointLimitsTask, ...
     leftAltitudeTask, rightAltitudeTask, ...
     leftManipulabilityTask, rightManipulabilityTask, leftToolTask, rightToolTask};
 
-holdObjectTasks = {rigidGraspTask, leftJointLimitsTask, rightJointLimitsTask, ...
-    leftAltitudeTask, rightAltitudeTask, leftManipulabilityTask, rightManipulabilityTask};
+moveObjectTasks = {rigidGraspTask, leftJointLimitsTask, rightJointLimitsTask, ...
+    leftAltitudeTask, rightAltitudeTask, leftManipulabilityTask, rightManipulabilityTask, objectMotionTask};
 
 actionManager = ActionManager(bimanualSystem);
 actionManager.addAction("go to object", goToObjectTasks);
-actionManager.addAction("hold object", holdObjectTasks);
+actionManager.addAction("move object", moveObjectTasks);
 actionManager.setCurrentAction("go to object");
 
 %% Initialize communication and logging
@@ -105,7 +106,7 @@ for step = 1:bimanualSystem.maxSteps
             leftArm.captureGrasp();
             rightArm.captureGrasp();
             graspCaptured = true;
-            actionManager.setCurrentAction("hold object"); 
+            actionManager.setCurrentAction("move object");
             fprintf('Grasp geometry captured at t = %.2f s\n',bimanualSystem.time);
         end
     end

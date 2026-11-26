@@ -44,6 +44,7 @@ rightArm.setObjectGoal(wTog);
 %% Define named actions as strict-priority task stacks
 leftJointLimitsTask = TaskJointLimits(leftArm, "left", "left joint limits");
 rightJointLimitsTask = TaskJointLimits(rightArm, "right", "right joint limits");
+
 leftAltitudeTask = TaskAltitude(leftArm, "left", "left altitude");
 rightAltitudeTask = TaskAltitude(rightArm, "right", "right altitude");
 
@@ -67,9 +68,12 @@ goToObjectTasks = {leftJointLimitsTask, rightJointLimitsTask, ...
 moveObjectTasks = {rigidGraspTask, leftJointLimitsTask, rightJointLimitsTask, ...
     leftAltitudeTask, rightAltitudeTask, leftManipulabilityTask, rightManipulabilityTask, objectMotionTask};
 
+stopTasks = {leftAltitudeTask, rightAltitudeTask};
+
 actionManager = ActionManager(bimanualSystem);
 actionManager.addAction("go to object", goToObjectTasks);
 actionManager.addAction("move object", moveObjectTasks);
+actionManager.addAction("stop", stopTasks);
 actionManager.setCurrentAction("go to object");
 
 %% Initialize communication and logging
@@ -78,8 +82,9 @@ logger = SimulationLogger(bimanualSystem, goToObjectTasks);
 
 %% Run the closed-loop kinematic simulation
 graspCaptured = false;
-positionTolerance = 0.001;  % Tool position tolerance [m].
-orientationTolerance = 0.01; % Tool orientation tolerance [rad].
+missionComplete = false;
+positionTolerance = 0.001;  % [m]
+orientationTolerance = 0.01; % [rad]
 tic
 for step = 1:bimanualSystem.maxSteps
     % In real-robot mode, replace the simulated configuration with the latest measurements before computing the new reference.
@@ -108,6 +113,17 @@ for step = 1:bimanualSystem.maxSteps
             graspCaptured = true;
             actionManager.setCurrentAction("move object");
             fprintf('Grasp geometry captured at t = %.2f s\n',bimanualSystem.time);
+        end
+    elseif ~missionComplete
+        % Stop once both arms inferred object poses have reached the goal.
+        [leftAngularError,leftLinearError] = CartesianError(leftArm.wTog,leftArm.wTo);
+        [rightAngularError,rightLinearError] = CartesianError(rightArm.wTog,rightArm.wTo);
+
+        if norm(leftLinearError) < positionTolerance && norm(rightLinearError) < positionTolerance ...
+                && norm(leftAngularError) < orientationTolerance && norm(rightAngularError) < orientationTolerance
+            actionManager.setCurrentAction("stop");
+            missionComplete = true;
+            fprintf('Object goal reached; stopping at t = %.2f s\n',bimanualSystem.time);
         end
     end
 

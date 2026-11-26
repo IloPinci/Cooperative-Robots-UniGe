@@ -24,10 +24,17 @@ bimanualSystem = BimanualSim(dt, leftArm, rightArm, endTime);
 %% Define the object and individual tool goals
 objectPosition = [0.5; 0; 0.59];
 objectOrientation = RPYToRotationMatrix(0, 0, 0);
+objectLength = 0.12;
 
-% TODO: derive distinct left and right tool goals from the object pose and the desired grasp transforms.
-leftArm.setGoal(objectPosition, objectOrientation, objectPosition, RPYToRotationMatrix(0, 0, 0));
-rightArm.setGoal(objectPosition, objectOrientation, objectPosition, RPYToRotationMatrix(0, 0, 0));
+leftGoalPosition = objectPosition + objectOrientation*[-objectLength/2;0;0];
+rightGoalPosition = objectPosition + objectOrientation*[objectLength/2;0;0];
+
+graspRotation = RPYToRotationMatrix(0,deg2rad(30),0);
+leftGoalOrientation = leftArm.wTt(1:3,1:3)*graspRotation;
+rightGoalOrientation = rightArm.wTt(1:3,1:3)*graspRotation;
+
+leftArm.setGoal(objectPosition,objectOrientation,leftGoalPosition,leftGoalOrientation);
+rightArm.setGoal(objectPosition,objectOrientation,rightGoalPosition,rightGoalOrientation);
 
 % The cooperative-motion object goal is stored now for tasks introduced in the following exercise phases.
 wTog = [RPYToRotationMatrix(0, 0, 0) [0.65; -0.35; 0.28]; 0 0 0 1];

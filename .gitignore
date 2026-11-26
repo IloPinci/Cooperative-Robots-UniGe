@@ -1,0 +1,11 @@
+# Operating-system metadata
+.DS_Store
+._*
+Thumbs.db
+
+# MATLAB backups and generated files
+*.asv
+*.m~
+*.log
+slprj/
+codegen/

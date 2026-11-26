@@ -126,6 +126,17 @@ classdef PandaArm < handle
             obj.wJt = obj.computeToolJacobian(obj.q);
         end
 
+        function wJo = computeObjectJacobian(obj)
+            %COMPUTEOBJECTJACOBIAN Shift the tool Jacobian to the grasped object origin.
+            %
+            % Output:
+            %   wJo - [6x7] object Jacobian in world axes, ordered as [angular; linear].
+            % Requires captureGrasp to have stored the fixed tool-to-object transform.
+            r = obj.wTt(1:3,1:3)*obj.tTo(1:3,4);
+            Sto = [eye(3) zeros(3); -skew(r) eye(3)];
+            wJo = Sto*obj.wJt;
+        end
+
         function wJt = computeToolJacobian(obj, q)
             %COMPUTETOOLJACOBIAN Evaluate the world-frame tool Jacobian at an arbitrary arm configuration.
             %

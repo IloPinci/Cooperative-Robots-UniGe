@@ -46,18 +46,29 @@ leftJointLimitsTask = TaskJointLimits(leftArm, "left", "left joint limits");
 rightJointLimitsTask = TaskJointLimits(rightArm, "right", "right joint limits");
 leftAltitudeTask = TaskAltitude(leftArm, "left", "left altitude");
 rightAltitudeTask = TaskAltitude(rightArm, "right", "right altitude");
+
 minimumManipulability = 0.06;
 manipulabilityActivationThreshold = 0.07;
-leftManipulabilityTask = TaskManipulability(leftArm, "left", "left manipulability", minimumManipulability, manipulabilityActivationThreshold);
-rightManipulabilityTask = TaskManipulability(rightArm, "right", "right manipulability", minimumManipulability, manipulabilityActivationThreshold);
+leftManipulabilityTask = TaskManipulability(leftArm, "left", ... 
+    "left manipulability", minimumManipulability, manipulabilityActivationThreshold);
+rightManipulabilityTask = TaskManipulability(rightArm, "right", ...
+    "right manipulability", minimumManipulability, manipulabilityActivationThreshold);
+
 leftToolTask = TaskTool(leftArm, "left", "left tool");
 rightToolTask = TaskTool(rightArm, "right", "right tool");
+
+rigidGraspTask = TaskRigidGrasp(leftArm, rightArm, "rigid grasp");
+
 goToObjectTasks = {leftJointLimitsTask, rightJointLimitsTask, ...
     leftAltitudeTask, rightAltitudeTask, ...
     leftManipulabilityTask, rightManipulabilityTask, leftToolTask, rightToolTask};
 
+holdObjectTasks = {rigidGraspTask, leftJointLimitsTask, rightJointLimitsTask, ...
+    leftAltitudeTask, rightAltitudeTask, leftManipulabilityTask, rightManipulabilityTask};
+
 actionManager = ActionManager(bimanualSystem);
 actionManager.addAction("go to object", goToObjectTasks);
+actionManager.addAction("hold object", holdObjectTasks);
 actionManager.setCurrentAction("go to object");
 
 %% Initialize communication and logging
@@ -94,6 +105,7 @@ for step = 1:bimanualSystem.maxSteps
             leftArm.captureGrasp();
             rightArm.captureGrasp();
             graspCaptured = true;
+            actionManager.setCurrentAction("hold object"); 
             fprintf('Grasp geometry captured at t = %.2f s\n',bimanualSystem.time);
         end
     end

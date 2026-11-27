@@ -1,0 +1,4 @@
+# Runtime dependencies for the supplied simulator, verified on Python 3.10.
+# Keep the original 2021 requirements.txt as supplied by the course.
+numpy==2.2.6
+pybullet==3.2.7
